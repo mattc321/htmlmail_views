@@ -49,7 +49,7 @@ class htmlmail_views_views_handler_area extends views_handler_area {
 	$form['htmlmail_views_other_view'] = array(
       '#type' => 'textfield',
       '#title' => t('Email a Different View'),
-	  '#description' => t('You can optionally have the link embed a different view or display other than this one. The Email Link will still be visible on this display.<strong>If this field is populated it will be the only view sent in the email.</strong><em>(syntax: view_name|display_name)</em>'),
+	  '#description' => t('You can optionally embed a different view or display other than this one. The Email Link will still be visible on this display.</br><strong>If this field is populated it will be the only view sent in the email.</strong><em>(syntax: view_name|display_name)</em>'),
       '#default_value' => $this->options['htmlmail_views_other_view'],
     );
 	$form['htmlmail_views_link_text'] = array(
@@ -61,14 +61,14 @@ class htmlmail_views_views_handler_area extends views_handler_area {
     );
     $form['htmlmail_views_from_alias'] = array(
       '#type' => 'textfield',
-      '#title' => t('From: Name Alias'),
+      '#title' => t('Default From: Alias'),
 	  '#description' => t('The site email will be used for sending emails. Leave blank to use "no-reply@"'),
       '#default_value' => $this->options['htmlmail_views_from_alias'],
     );
 	$form['htmlmail_views_from_user'] = array(
       '#type' => 'checkbox',
-      '#title' => t('Current User Email'),
-	  '#description' => t('Use the currently logged in user\'s email address as the senders email.'),
+      '#title' => t('Use the Current User\'s Email'),
+	  '#description' => t('Use the currently logged in user\'s email address as the senders email by default.'),
       '#default_value' => $this->options['htmlmail_views_from_user'],
     );
 	$form['htmlmail_views_def_subject'] = array(
@@ -79,7 +79,7 @@ class htmlmail_views_views_handler_area extends views_handler_area {
     );
 	$form['htmlmail_views_def_recipient'] = array(
       '#type' => 'textfield',
-      '#title' => t('To: Default Recipient'),
+      '#title' => t('Default To: Recipient'),
 	  '#description' => t('Email address for the default recipient(s) separated by comma. Users will still be prompted for an email.'),
       '#default_value' => $this->options['htmlmail_views_def_recipient'],
     );
@@ -111,9 +111,7 @@ class htmlmail_views_views_handler_area extends views_handler_area {
 	
 //{+} VAL OTHER VIEW
 	$otherview = $form_state['values']['options']['htmlmail_views_other_view'];
-	
 	$otherview = explode("|", $otherview);
-	dpm($otherview);
 	if (!views_get_view($otherview[0], $otherview[1])) {
 		form_set_error('htmlmail_views_other_view', t('Invalid view format or view display not found.'));
 	}

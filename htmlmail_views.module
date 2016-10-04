@@ -18,8 +18,7 @@ function htmlmail_views_callback($ajax, $view_name, $display) {
   if ($ajax) {
     ctools_include('ajax');
     ctools_include('modal');
-	
-	$main_view = views_get_view($view_name);	
+	$main_view = views_get_view($view_name);
 	if (isset($main_view->display[$display]->display_options['header']['enable_htmlmail_views'])) {
 		$arr_view = $main_view->display[$display];
 		$a_user = $arr_view->display_options['header']['enable_htmlmail_views']['htmlmail_views_from_user'];
@@ -29,6 +28,15 @@ function htmlmail_views_callback($ajax, $view_name, $display) {
 		$a_body = $arr_view->display_options['header']['enable_htmlmail_views']['htmlmail_views_body_msg'];
 		$a_css = $arr_view->display_options['header']['enable_htmlmail_views']['htmlmail_views_global_css'];
 		$a_subject = $arr_view->display_options['header']['enable_htmlmail_views']['htmlmail_views_def_subject'];
+		$other_view = $arr_view->display_options['header']['enable_htmlmail_views']['htmlmail_views_other_view'];
+		//If other_view is populated, update the view_name and display variables
+		if (!empty($other_view)) {
+			$arr_view = explode("|", $other_view);
+			if (views_get_view($arr_view[0], $arr_view[1])) {
+				$view_name = $arr_view[0];
+				$display = $arr_view[1];
+			}
+		}
 	}
 	if ($a_user == TRUE) {
 		global $user;
@@ -75,7 +83,7 @@ function htmlmail_views_form($form, &$form_state, $view_name) {
 		'#id' => 'htmlmail_views_email_to',
 		'#type' => 'textfield', 
 	   '#size'=> 30,
-	   '#value' => $form_state['def_recipient'],
+	   '#default_value' => $form_state['def_recipient'],
 	);
 	$form['email_from'] = array(
 		'#weight' => 1,
@@ -83,7 +91,7 @@ function htmlmail_views_form($form, &$form_state, $view_name) {
 		'#id' => 'htmlmail_views_email_from',
 		'#type' => 'textfield', 
 	   '#size'=> 30,
-	   '#value' => $form_state['from_alias'],
+	   '#default_value' => $form_state['from_alias'],
 	);
 	$form['email_subject'] = array(
 		'#weight' => 2,
@@ -91,15 +99,11 @@ function htmlmail_views_form($form, &$form_state, $view_name) {
 		'#id' => 'htmlmail_views_email_subject',
 		'#type' => 'textfield',
 	   '#size'=> 30,
-	   '#value' => $form_state['subject'],
+	   '#default_value' => $form_state['subject'],
 	);
 	$form['global_css'] = array(
 		'#type' => 'hidden',
-		'#value' => $form_state['globalcss'],
-	);
-	$form['view_name'] = array(
-		'#type' => 'hidden',
-		'#value' => $form_state['view_name'],
+		'#default_value' => $form_state['globalcss'],
 	);
 	$form['body_msg'] = array( 
 		'#weight' => 3,
@@ -108,13 +112,13 @@ function htmlmail_views_form($form, &$form_state, $view_name) {
 		'#type' => 'textarea',
 		'#id' => 'htmlmail_views_body_msg',
 		'#size'=> 30,
-		'#value' => $form_state['body_msg'],
+		'#default_value' => $form_state['body_msg'],
 	);
 
 	$form['submit'] = array( 
 		'#type' => 'submit', 
 		'#weight' => 4,
-		'#value' => t('Submit'),
+		'#value' => t('Send'),
 	);
 	$form['cancel'] = array( 
 		'#type' => 'submit', 
@@ -131,25 +135,31 @@ function htmlmail_views_form($form, &$form_state, $view_name) {
 function htmlmail_views_form_submit(&$form, &$form_state) {
 
   // Tell the browser to close the modal.
-  $form_state['ajax_commands'][] = ctools_modal_command_dismiss();
-  dpm($form_state);
+  if ($form_state['values']['op'] == 'Cancel') {
+		$form_state['ajax_commands'][] = ctools_modal_command_dismiss();
+		return;
+	}
+  
 	global $user;
-	$to = $form_state['def_recipient'];
+	$to = trim($form_state['values']['email_to']);
 	$site_email = variable_get('site_mail', '');
-	$from = $form_state['from_alias'];
-	$css = $form_state['globalcss'];
-	$body = $form_state['body_msg'];
+	$from = trim($form_state['values']['email_from']);
+	$css = $form_state['values']['global_css'];
+	$body = $form_state['values']['body_msg'];
 	$view_name = $form_state['view_name'];
 	$display = $form_state['display_name'];
-	$subject = $form_state['subject'];
+	$subject = trim($form_state['values']['email_subject']);
 	
+	if (empty($form_state['values']['email_from'])) {
+		$from = $site_email;
+	}
 	drupal_mail
 	(
 	  // Module
 	  'htmlmail_views',
 	  // Mail Key
 	  'email_view',
-	  // The destination dmail address
+	  // The destination email address
 	  $to,
 	  // The language that the mail should be sent in (requires translation if not English)
 	  $user->language,
@@ -163,13 +173,55 @@ function htmlmail_views_form_submit(&$form, &$form_state) {
 		'subject' => $subject,
 		'viewname' => $view_name,
 		'display' => $display,
-	  )
+	  ),
+	  $from
 	);
+	$form_state['ajax_commands'][] = ctools_modal_command_dismiss();
+ 	$form_state['ajax_commands'][] = ajax_command_insert('#htmlmail-views-link', '<div class="ajax-messages"><span class="pos">&times;</span>Email sent!</div>');
+}
 
+/**
+ * Drupal form validate.
+ */
+function htmlmail_views_form_validate(&$form, &$form_state) {
 	if ($form_state['values']['op'] == 'Cancel') {
+		$form_state['ajax_commands'][] = ctools_modal_command_dismiss();
 		return;
 	}
- 	$form_state['ajax_commands'][] = ajax_command_insert('#htmlmail-views-link', '<div class="ajax-messages"><span class="pos">Email sent!</span></div>');
+	$to = $form_state['values']['email_to'];
+	$site_email = variable_get('site_mail', '');
+	$from = $form_state['values']['email_from'];
+	$css = $form_state['values']['global_css'];
+	$body = $form_state['values']['body_msg'];
+	$view_name = $form_state['view_name'];
+	$display = $form_state['display_name'];
+	$subject = $form_state['values']['email_subject'];
+	
+	//{+} VAL TO EMAIL
+	$email_raw = $to;
+	$elist = explode(",", $email_raw);
+	foreach ($elist as $key => $email) {
+		$email = trim($email);
+		if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+			form_set_error('email_to', t('Invalid email(s). Should be name@domain.com, name2@domain.com'));
+			$form_state['rebuild'] = TRUE;
+			$form_state['flag'] = 1;
+		}
+	}
+	//{+} VAL FROM EMAIL
+	$arr = explode(' ',trim($from));
+	if (!filter_var($arr[0], FILTER_VALIDATE_EMAIL) && !empty($from)) {
+			form_set_error('email_from', t('Invalid From email. Should be name@domain.com'));
+			$form_state['rebuild'] = TRUE;
+			$form_state['flag'] = 1;
+	}
+
+	//{+} VAL SUBJECT
+	if (strlen(trim($from)) > 100) {
+		form_set_error('email_subject', t('C\'mon...subject is too long.'));
+		$form_state['rebuild'] = TRUE;
+		$form_state['flag'] = 1;
+	}	
 }
 
 /**
@@ -230,7 +282,7 @@ function htmlmail_views_menu() {
     'page arguments' => array(1, 2, 3),
     'access callback' => TRUE,
   );
-  return $items; 
+  return $items;
 }
 
 /**
@@ -239,10 +291,12 @@ function htmlmail_views_menu() {
 function htmlmail_views_views_pre_render(&$view) {	
 
 	if (isset($view->header['enable_htmlmail_views']->options['htmlmail_views_option']) == 1) {
+		
 		$view_name = $view->name;
 		$display = $view->current_display;
-		$a_link_text = $view->query->pager->display->handler->handlers['header']['enable_htmlmail_views']->options['htmlmail_views_link_text'];
 		
+		$a_link_text = $view->query->pager->display->handler->handlers['header']['enable_htmlmail_views']->options['htmlmail_views_link_text'];
+
 		ctools_include('ajax');
 		ctools_include('modal');
 		ctools_modal_add_js();
@@ -265,9 +319,9 @@ function htmlmail_views_mail ($key, &$message, $params) {
 		$message['headers']['Content-Type'] = 'text/html;';
 		
 		$message['subject'] = $params['subject'];
-		
 		//load the view - attach it to the end of the body
 		$output = views_embed_view($params['viewname'], $params['display']);
+		
 		$message['body'][] = '<style>'.$params['css'].'</style>';
 		$message['body'][] = $params['body'];
 		$message['body'][] = $output;
