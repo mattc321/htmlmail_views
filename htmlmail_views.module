@@ -224,58 +224,13 @@ function htmlmail_views_form_validate(&$form, &$form_state) {
 	}	
 }
 
-/**
- * Implements hook_ctools_plugin_type().
- */
-function htmlmail_views_admin() {
-	
-//--> BACKEND CONFIGURATION Form
-
-  $form = array();
-   
-  $markup = 'test markup';
-
-  $form['htmlmail_views_version'] = array(
-    '#markup' => $markup,
-    '#weight' => -100,
-  );
-   
-   $form['htmlmail_views_contenttype'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Event Content Type'),
-    '#default_value' => variable_get('htmlmail_views_contenttype', 'event'),
-    '#size' => 60,
-    '#maxlength' => 60,
-    '#description' => t("The machine name of the content type to react on"),
-    '#required' => TRUE,
-  );
- 
-  $form['#submit'][] = 'htmlmail_views_admin_submit';
-  return system_settings_form($form);
-}
-
-/**
- * Implements submit handler
- */
-function htmlmail_views_admin_submit($form, &$form_state) {
-
-}
 
 /**
  * Implements hook_menu().
  */
 function htmlmail_views_menu() {
 
-  $items = array();
-
-  $items['admin/config/htmlmail-views-settings'] = array(
-    'title' => 'HTML Mail Settings',
-    'description' => 'HTML Mail Settings',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('htmlmail_views_admin'),
-    'access arguments' => array('access administration pages'),
-    'type' => MENU_NORMAL_ITEM,
-  );	
+  $items = array();	
 	$items['email_view/%ctools_js/%/%'] = array(
 	'title' => t('Email this'),
     'page callback' => 'htmlmail_views_callback',
